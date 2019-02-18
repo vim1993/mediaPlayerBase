@@ -1,6 +1,8 @@
 #ifndef __IPORTING_PLAYER_1_0_H__
 #define __IPORTING_PLAYER_1_0_H__
 
+#include "lxMsgQue.h"
+#include "ISurface.h"
 #include "IPlayerNotify.h"
 #include "type.h"
 
@@ -16,6 +18,18 @@ typedef enum player_status {
     STATUS_IDLE,
     STATUS_ERROR
 }player_status_e;
+
+enum playerMSGID{
+    PLAYER_PREPARE,
+    PLAYER_START,
+    PLAYER_STOP,
+    PLAYER_PAUSE,
+};
+
+typedef struct playerMsg_t {
+    u32int msgid;
+    void * msgContent;
+}playerMsg_t;
 
 class IPortingPlayer {
 
@@ -49,6 +63,8 @@ class IPortingPlayer {
         virtual status_t pause(void) = 0;
         virtual status_t seekto(int msec) = 0;
         virtual status_t reset(void) = 0;
+
+        virtual status_t setSurface(msgque_obj * surface) = 0;
 };
 
 #endif

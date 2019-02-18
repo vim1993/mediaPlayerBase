@@ -16,10 +16,15 @@ extern "C" {
 #endif
 
 #include "IPortingPlayer.h"
+#include "type.h"
+#include "lxMsgQue.h"
+#include "ISurface.h"
 
 class FFMPEGPlayer : public IPortingPlayer {
+    pthread_t m_pthid;
     char m_uri[1024];
     int m_playerStatus;
+    msgque_obj * m_msgque;
     int videoStreamIndex;
     AVFormatContext * pAVFormatCt;
     AVCodecContext * pAVCodeCt;
@@ -28,6 +33,12 @@ class FFMPEGPlayer : public IPortingPlayer {
     AVFrame * pAVframeYUV;
     AVPacket * pAVPacket;
     char *out_buffer;
+
+    msgque_obj * m_surfacemsgque;
+
+    BOOLTYPE initSource(void);
+
+    static void * ffmpeg_start(void *param);
 
     public:
         FFMPEGPlayer();
@@ -40,6 +51,7 @@ class FFMPEGPlayer : public IPortingPlayer {
         status_t pause(void);
         status_t seekto(int msec);
         status_t reset(void);
+        status_t setSurface(msgque_obj * surface);
 };
 
 #endif

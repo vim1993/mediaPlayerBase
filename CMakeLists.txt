@@ -32,4 +32,4 @@ LINK_DIRECTORIES(/usr/lib)
 ADD_EXECUTABLE(${PROJECT_NAME} ${PLATFORM_PLAYER_SRC} ${MAIN_SRC} ${PLAYER_UTILS})
 
 #link lib
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} WHEEL_1_0 SDL2 avcodec avdevice avfilter avformat avutil swresample swscale)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} WHEEL_1_0 SDL2 avcodec avdevice avfilter avformat avutil swresample swscale pthread)

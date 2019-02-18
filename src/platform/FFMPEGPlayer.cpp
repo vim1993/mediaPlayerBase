@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +20,28 @@ extern "C" {
 #include "FFMPEGPlayer.h"
 #include "type.h"
 #include "lxlog.h"
+
+void * FFMPEGPlayer::ffmpeg_start(void * param) {
+    playerMsg_t * msg;
+    FFMPEGPlayer * pThis = (FFMPEGPlayer *)param;
+    while(1) {
+        msg = (playerMsg_t *)pThis->m_msgque->pop_front(pThis->m_msgque);
+        if(msg == NULL) {
+            LOG_DEBUG_PRINT("[%s][%d]! msg recv null\n", __func__, __LINE__);
+            continue;
+        }
+
+        switch (msg->msgid)
+        {
+            default:
+                break;
+        }
+
+        pThis->m_msgque->release_buffer(pThis->m_msgque, msg);
+        msg = NULL;
+    }
+    return NULL;
+}
 
 status_t FFMPEGPlayer::setDataSource(const char * url) {
     if(url == NULL) {
@@ -80,14 +103,31 @@ status_t FFMPEGPlayer::prepareSync(void) {
 }
 
 status_t FFMPEGPlayer::start(void) {
+    playerMsg_t msg = {0};
+    msg.msgid = PLAYER_START;
+    msg.msgContent= NULL;
+
+    m_msgque->push_back(m_msgque, &msg, sizeof(playerMsg_t));
+
     return RET_OK;
 }
 
 status_t FFMPEGPlayer::stop(void) {
+    playerMsg_t msg = {0};
+    msg.msgid = PLAYER_START;
+    msg.msgContent= NULL;
+
+    m_msgque->push_back(m_msgque, &msg, sizeof(playerMsg_t));
     return RET_OK;
 }
 
 status_t FFMPEGPlayer::pause(void) {
+    playerMsg_t msg = {0};
+    msg.msgid = PLAYER_PAUSE;
+    msg.msgContent= NULL;
+
+    m_msgque->push_back(m_msgque, &msg, sizeof(playerMsg_t));
+
     return RET_OK;
 }
 
@@ -98,6 +138,30 @@ status_t FFMPEGPlayer::seekto(int msec) {
 status_t FFMPEGPlayer::reset(void) {
     memset(m_uri, 0x00, sizeof(m_uri));
     m_playerStatus = STATUS_IDLE;
+
+    return RET_OK;
+}
+
+BOOLTYPE FFMPEGPlayer::initSource(void) {
+    if(pthread_create(&m_pthid, NULL, ffmpeg_start, this) != 0) {
+        LOG_ERROR_PRINT("start ffmpeg pthread failed\n");
+        return BOOL_FALSE;
+    }
+
+    m_msgque = NEW(msgque_obj);
+    if(m_msgque == NULL) {
+        return BOOL_FALSE;
+    }
+
+    return BOOL_TRUE;
+}
+
+status_t FFMPEGPlayer::setSurface(msgque_obj * msgque) {
+    if(msgque == NULL) {
+        return RET_FAILED;
+    }
+
+    m_surfacemsgque = msgque;
 
     return RET_OK;
 }
@@ -114,9 +178,12 @@ FFMPEGPlayer::FFMPEGPlayer()
     pAVframeYUV = NULL;
     pAVPacket = NULL;
     out_buffer = NULL;
+    m_msgque = NULL;
     memset(m_uri, 0x00, sizeof(m_uri));
 }
 
 FFMPEGPlayer::~FFMPEGPlayer() {
-
+    if(m_msgque) {
+        DELETE(msgque_obj, m_msgque);
+    }
 }
