@@ -15,8 +15,10 @@ class IPlayer {
         virtual status_t pause(void) = 0;
         virtual status_t seekto(int msec) = 0;
         virtual status_t reset(void) = 0;
-        virtual status_t setListener(IPlayerListener & listener) = 0;
 
+        virtual status_t setListener(IPlayerListener & listener) = 0; //set msg callback
+
+        virtual status_t setWindowsSize(int x, int y, int w, int h) = 0; //create windows, surface
 };
 
 #endif

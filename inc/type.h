@@ -56,6 +56,15 @@ typedef int status_t;
 #define NEW(TYPE)  (TYPE##_new())
 #define DELETE(TYPE, PTR) TYPE##_delete(PTR)
 
+typedef struct YUVFrame_t {
+    u8int *Yplane;
+    i32int Ypitch;
+    u8int *Uplane;
+    i32int Upitch;
+    u8int *Vplane;
+    i32int Vpitch;
+}YUVFrame_t;
+
 #ifdef __cplusplus
 }
 #endif

@@ -7,11 +7,23 @@
 using namespace std;
 
 typedef struct surfaceRect {
-    uint x;
-    uint y;
-    uint w;
-    uint h;
+    i32int x;
+    i32int y;
+    i32int w;
+    i32int h;
 }surfaceRect, *PRECT;
+
+typedef struct surfaceMsg {
+    u32int msgid;
+    void * data;
+}surfaceMsg;
+
+enum surfaceMsgID_e {
+    SURFACE_FLUSH,
+    SURFACE_FRAME,
+    SURFACE_PIC,
+    SURFACE_TEXT
+};
 
 typedef void (*surfaceChangedListener)(void);
 
@@ -34,7 +46,10 @@ class ISurface {
     public:
         virtual bool createSurface(surfaceRect & rect) = 0;
         virtual bool releaseSurface(void) = 0;
-
+        virtual bool showFrame(void * frame) = 0;
+        virtual bool showText(const char * text) = 0;
+        virtual bool showPicture(const char * picpath) = 0;
+        virtual const surfaceRect * getSurfaceRect(void) const = 0;
 };
 
 #endif

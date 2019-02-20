@@ -22,6 +22,7 @@ typedef enum player_status {
 enum playerMSGID{
     PLAYER_PREPARE,
     PLAYER_START,
+    PLAYER_PARSE,
     PLAYER_STOP,
     PLAYER_PAUSE,
 };
@@ -44,16 +45,6 @@ class IPortingPlayer {
             return;
         };
 
-        status_t setListener(notify_callback_f    fnotify) {
-            if(fnotify == NULL) {
-                return RET_FAILED;
-            }
-
-            m_notify = fnotify;
-
-            return RET_OK;
-        }
-
     public:
         virtual status_t setDataSource(const char * url) = 0;
         virtual status_t prepare(void) = 0;
@@ -64,7 +55,17 @@ class IPortingPlayer {
         virtual status_t seekto(int msec) = 0;
         virtual status_t reset(void) = 0;
 
-        virtual status_t setSurface(msgque_obj * surface) = 0;
+        virtual status_t setSurface(ISurface * surface) = 0;
+
+        status_t setListener(notify_callback_f    fnotify) {
+            if(fnotify == NULL) {
+                return RET_FAILED;
+            }
+
+            m_notify = fnotify;
+
+            return RET_OK;
+        }
 };
 
 #endif
