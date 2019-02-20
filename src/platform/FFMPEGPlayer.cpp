@@ -32,31 +32,31 @@ status_t FFMPEGPlayer::parseFrame(void) {
 
     int iret = -1;
     int got_picture_ptr = -1;
-    //LOG_ERROR_PRINT("start parse one frame...\n");
-    if(av_read_frame(pAVFormatCt, pAVPacket) == 0) {
-        if(pAVPacket->stream_index == videoStreamIndex) {
-            iret = avcodec_decode_video2(pAVCodeCt, pAVframe, &got_picture_ptr, pAVPacket);
-            if(iret < 0) {
-                return RET_FAILED;
+    while(1) {
+        if(av_read_frame(pAVFormatCt, pAVPacket) == 0) {
+            if(pAVPacket->stream_index == videoStreamIndex) {
+                iret = avcodec_decode_video2(pAVCodeCt, pAVframe, &got_picture_ptr, pAVPacket);
+                if(iret < 0) {
+                    continue;
+                }
+
+                if(got_picture_ptr > 0) {
+                    sws_scale(m_pSwsCt, pAVframe->data, pAVframe->linesize, 0, pAVframe->height, pAVframeYUV->data, pAVframeYUV->linesize);
+
+                    yuvframe.Yplane = pAVframeYUV->data[0];
+                    yuvframe.Ypitch = pAVframeYUV->linesize[0];
+                    yuvframe.Uplane = pAVframeYUV->data[1];
+                    yuvframe.Upitch = pAVframeYUV->linesize[1];
+                    yuvframe.Vplane = pAVframeYUV->data[2];
+                    yuvframe.Vpitch = pAVframeYUV->linesize[2];
+
+                    m_surface->showFrame(&yuvframe);
+                }
             }
 
-            if(got_picture_ptr > 0) {
-                sws_scale(m_pSwsCt, pAVframe->data, pAVframe->linesize, 0, pAVframe->height, pAVframeYUV->data, pAVframeYUV->linesize);
-
-                yuvframe.Yplane = pAVframeYUV->data[0];
-                yuvframe.Ypitch = pAVframeYUV->linesize[0];
-                yuvframe.Uplane = pAVframeYUV->data[1];
-                yuvframe.Upitch = pAVframeYUV->linesize[1];
-                yuvframe.Vplane = pAVframeYUV->data[2];
-                yuvframe.Vpitch = pAVframeYUV->linesize[2];
-
-                m_surface->showFrame(&yuvframe);
-            }
+            return RET_OK;
         }
-
-        return RET_OK;
     }
-
     return RET_FAILED;
 }
 
@@ -72,9 +72,7 @@ void * FFMPEGPlayer::ffmpeg_msgproc(void * param) {
 
         switch(msg->msgid) {
             case PLAYER_PARSE:
-                LOG_DEBUG_PRINT_EX();
                 pThis->parseFrame();
-                LOG_DEBUG_PRINT_EX();
                 break;
 
             case PLAYER_STOP:
@@ -122,6 +120,12 @@ status_t FFMPEGPlayer::setDataSource(const char * url) {
 }
 
 status_t FFMPEGPlayer::prepare(void) {
+
+    if(m_playerStatus != STATUS_DATASOURCE) {
+        this->m_notify(PLAYERMSG_SOURCE_PREPARE_FAILED, -1);
+        return RET_FAILED;
+    }
+
     int avindex = 0;
     int extcode = -1;
     int iret = RET_FAILED;
@@ -131,6 +135,7 @@ status_t FFMPEGPlayer::prepare(void) {
     }
 
     av_register_all();
+    avformat_network_init();
     pAVFormatCt = avformat_alloc_context();
     if(pAVFormatCt == NULL) {
         extcode = 2;
@@ -206,6 +211,7 @@ exit:
     }
 
     this->m_notify(PLAYERMSG_SOURCE_PREPARE_OK, RET_OK);
+    m_playerStatus = STATUS_PREPARE;
     return RET_OK;
 }
 
@@ -214,24 +220,36 @@ status_t FFMPEGPlayer::prepareSync(void) {
 }
 
 status_t FFMPEGPlayer::start(void) {
+    if(m_playerStatus == STATUS_PREPARE) {
+        m_timer->start_timer(m_timer, 20, timer_notify, this);
+    } else if(m_playerStatus != STATUS_ERROR || m_playerStatus != STATUS_IDLE) {
+        m_timer->restart_timer(m_timer);
+    }
+
+    this->m_notify(PLAYERMSG_SOURCE_START_OK, RET_OK);
 
     m_playerStatus = STATUS_START;
-
-    playerMsg_t msg = {0};
-    msg.msgid = PLAYER_PARSE;
-    m_msgque->push_back(m_msgque, &msg, sizeof(playerMsg_t));
-
-    m_timer->start_timer(m_timer, 20, timer_notify, this);
-    this->m_notify(PLAYERMSG_SOURCE_START_OK, RET_OK);
     return RET_OK;
 }
 
 status_t FFMPEGPlayer::stop(void) {
 
+    playerMsg_t msg = {0};
+    msg.msgid = PLAYER_STOP;
+    m_msgque->push_back(m_msgque, &msg, sizeof(playerMsg_t));
+    m_playerStatus = STATUS_STOP;
+    this->m_notify(PLAYERMSG_SOURCE_STOP_OK, RET_OK);
+
     return RET_OK;
 }
 
 status_t FFMPEGPlayer::pause(void) {
+
+    playerMsg_t msg = {0};
+    msg.msgid = PLAYER_PAUSE;
+    m_msgque->push_back(m_msgque, &msg, sizeof(playerMsg_t));
+    m_playerStatus = STATUS_PAUSE;
+    this->m_notify(PLAYERMSG_SOURCE_PAUSE_OK, RET_OK);
 
     return RET_OK;
 }
@@ -327,6 +345,8 @@ FFMPEGPlayer::~FFMPEGPlayer() {
     if(pAVCodeCt) {
         avcodec_close(pAVCodeCt);
     }
+
+    avformat_network_deinit();
 
     if(pAVFormatCt) {
         avformat_close_input(&pAVFormatCt);

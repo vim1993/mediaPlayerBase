@@ -20,6 +20,7 @@ void notify(int msg, int ext1) {
 
 int main(int argc, char * argv[]) {
 
+    int cnt = 0;
     surfaceRect rect = {0,0,720,576};
     ISurface * surface = new SDL2Surface();
     surface->createSurface(rect);
@@ -33,7 +34,19 @@ int main(int argc, char * argv[]) {
 
     while(1) {
         usleep(30 * 1000);
+        cnt++;
+        if(cnt == 600) {
+            player->pause();
+        } else if(cnt == 750) {
+            player->start();
+        } else if(cnt == 1100) {
+            player->stop();
+            break;
+        }
     }
+
+    delete player;
+    delete surface;
 
     return 0;
 }
